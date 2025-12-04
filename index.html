@@ -1,268 +1,170 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital 1.9 - Supabase</title>
 
-<html lang="pt">  
-<head>  
-<meta charset="UTF-8">  
-<meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>Digital 1.9 - Supabase</title>  
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
 
-<script src="https://cdn.tailwindcss.com"></script>  
+<style>
+body { font-family: sans-serif; background: #f0f4f8; margin:0; }
+input, button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:6px; border:1px solid #ccc; }
+button { cursor:pointer; }
+#adminArea, #clienteArea { margin-top:1rem; padding:1rem; border-radius:8px; }
+#adminArea { background:#fee2e2; }
+#clienteArea { background:#dbeafe; }
+#produtosList div, #carrinho div, #faturasList div { margin-bottom:0.5rem; }
+</style>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  
+</head>
+<body>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>  
+<div class="p-6">
+  <h2>Bem-vindo, <span id="userEmail">Visitante</span></h2>
 
-<style>  
-body { font-family: sans-serif; background: #f0f4f8; margin:0; }  
-#loginModal { position: fixed; inset:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:50; }  
-#loginModalContent { background:white; padding:2rem; border-radius:12px; width:320px; }  
-input, button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:6px; border:1px solid #ccc; }  
-button { cursor:pointer; }  
-#adminArea, #clienteArea { display:none; margin-top:1rem; padding:1rem; border-radius:8px; }  
-#adminArea { background:#fee2e2; }  
-#clienteArea { background:#dbeafe; }  
-#produtosList div, #carrinho div, #faturasList div { margin-bottom:0.5rem; }  
-</style>  
+  <div id="adminArea">
+    <p class="font-bold">Área do Administrador</p>
+    <h3>Adicionar Produto</h3>
+    <input type="text" id="nomeItem" placeholder="Nome do produto">
+    <input type="number" id="precoItem" placeholder="Preço">
+    <input type="number" id="quantidadeItem" placeholder="Quantidade">
+    <button id="btnAddItem" class="bg-green-600 text-white font-bold">Adicionar Item</button>
+  </div>
 
-</head>  
-<body>  
+  <div id="clienteArea">
+    <p class="font-bold">Área do Cliente</p>
+    <h3>Produtos</h3>
+    <div id="produtosList"></div>
 
-<!-- MODAL LOGIN -->  
+    <h3>Carrinho</h3>
+    <div id="carrinho"></div>
 
-<div id="loginModal">  
-  <div id="loginModalContent">  
-    <h2 class="text-xl font-bold mb-4 text-center">Entrar / Criar Conta</h2>  
-    <input type="email" id="emailLogin" placeholder="Email">  
-    <input type="password" id="senhaLogin" placeholder="Senha">  
-    <button id="btnEntrar" class="bg-blue-600 text-white font-bold">Entrar</button>  
-    <button id="btnCriarConta" class="bg-gray-800 text-white font-bold">Criar Conta</button>  
-  </div>  
-</div>  
+    <p>Total: <span id="valorTotal">0 Kz</span></p>
+    <button id="btnFinalizar" class="bg-green-600 text-white font-bold">Finalizar Compra</button>
+  </div>
 
-<div id="loginBox" class="p-6">  
-  <h2>Bem-vindo, <span id="userEmail">Visitante</span></h2>  
-  <p id="userTipo"></p>  
-  <button id="btnLogout" class="bg-red-500 text-white font-bold my-2">Sair</button>  
+  <h3>Faturas</h3>
+  <div id="faturasList"></div>
+</div>
 
-  <div id="adminArea">  
-    <p class="font-bold">Área do Administrador</p>  
-    <h3>Adicionar Produto</h3>  
-    <input type="text" id="nomeItem" placeholder="Nome do produto">  
-    <input type="number" id="precoItem" placeholder="Preço">  
-    <input type="number" id="quantidadeItem" placeholder="Quantidade">  
-    <button id="btnAddItem" class="bg-green-600 text-white font-bold">Adicionar Item</button>  
-  </div>  
+<script>
+const supabaseUrl = "https://gvvdiddmlubezpshkkpl.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9yM";
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  <div id="clienteArea">  
-    <p class="font-bold">Área do Cliente</p>  
-    <h3>Produtos</h3>  
-    <div id="produtosList"></div>  
+let carrinho = [];
 
-```
-<h3>Carrinho</h3>  
-<div id="carrinho"></div>  
+// Configurar áreas (não há login, então já define como cliente/admin padrão)
+document.getElementById("userEmail").innerText = "Usuário Padrão";
+document.getElementById("adminArea").style.display = "block"; // ou "none" se quiser só cliente
+document.getElementById("clienteArea").style.display = "block";
 
-<p>Total: <span id="valorTotal">0 Kz</span></p>  
-<button id="btnFinalizar" class="bg-green-600 text-white font-bold">Finalizar Compra</button>  
-```
+// ===== ADICIONAR ITEM (ADMIN) =====
+document.getElementById("btnAddItem").addEventListener("click", async () => {
+  const nome = nomeItem.value.trim();
+  const preco = Number(precoItem.value);
+  const quantidade = Number(quantidadeItem.value);
+  if(!nome || preco<=0 || quantidade<=0) return alert("Preencha todos os campos corretamente");
+  await supabase.from("itens").insert([{ nome, preco, stock: quantidade }]);
+  alert("Item adicionado!");
+  carregarProdutos();
+});
 
-  </div>  
+// ===== CARREGAR PRODUTOS =====
+async function carregarProdutos(){
+  const { data } = await supabase.from("itens").select("*");
+  const container = document.getElementById("produtosList");
+  container.innerHTML = "";
+  if(!data) return;
+  data.forEach(p=>{
+    const div = document.createElement("div");
+    const btn = document.createElement("button");
+    btn.textContent = "Adicionar";
+    btn.className = "bg-blue-500 text-white px-2 py-1 rounded";
+    btn.addEventListener("click", ()=>adicionarAoCarrinho(p.id, p.nome, p.preco, p.stock));
+    div.textContent = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock} `;
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+}
 
-  <h3>Faturas</h3>  
-  <div id="faturasList"></div>  
-</div>  
+// ===== CARRINHO =====
+function adicionarAoCarrinho(id,nome,preco,stock){
+  if(stock<=0) return alert("Sem estoque!");
+  const itemExistente = carrinho.find(i=>i.id===id);
+  if(itemExistente){
+    if(itemExistente.quantidade<stock) itemExistente.quantidade++;
+    else return alert("Não há mais estoque disponível");
+  } else {
+    carrinho.push({id,nome,preco,quantidade:1});
+  }
+  atualizarCarrinho();
+}
 
-<script>  
-const supabaseUrl = "https://gvvdiddmlubezpshkkpl.supabase.co";  
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9yM"; // substitua pela sua chave correta  
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);  
+function atualizarCarrinho(){
+  const container = document.getElementById("carrinho");
+  container.innerHTML = "";
+  let total=0;
+  carrinho.forEach((item,i)=>{
+    total+=item.preco*item.quantidade;
+    const div=document.createElement("div");
+    const btn=document.createElement("button");
+    btn.textContent="X";
+    btn.className="bg-red-500 text-white px-1 rounded ml-2";
+    btn.addEventListener("click",()=>removerDoCarrinho(i));
+    div.textContent=`${item.nome} x${item.quantidade} — ${item.preco*item.quantidade} Kz`;
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+  document.getElementById("valorTotal").innerText=total+" Kz";
+}
 
-let usuarioLogado = null;  
-let carrinho = [];  
+function removerDoCarrinho(i){
+  carrinho.splice(i,1);
+  atualizarCarrinho();
+}
 
-// ===== VERIFICAR SESSÃO =====  
-async function verificarSessao() {  
-  const { data } = await supabase.auth.getSession();  
-  if(data.session){  
-    usuarioLogado = data.session.user;  
-    document.getElementById("loginModal").style.display = "none";  
-    configurarUsuario(usuarioLogado.email);  
-    carregarProdutos();  
-    carregarFaturas();  
-  }  
-}  
-verificarSessao();  
+// ===== FINALIZAR COMPRA =====
+document.getElementById("btnFinalizar").addEventListener("click", async()=>{
+  if(carrinho.length===0) return alert("Carrinho vazio!");
+  for(const item of carrinho){
+    const { data:prod } = await supabase.from("itens").select("*").eq("id",item.id).limit(1).single();
+    if(item.quantidade>prod.stock) return alert(`Estoque insuficiente de ${item.nome}`);
+  }
+  for(const item of carrinho){
+    await supabase.from("vendas").insert([{usuario_id:1,item_id:item.id,quantidade:item.quantidade}]);
+    const { data:prod } = await supabase.from("itens").select("*").eq("id",item.id).limit(1).single();
+    await supabase.from("itens").update({stock:prod.stock-item.quantidade}).eq("id",item.id);
+  }
+  const totalCompra=carrinho.reduce((acc,i)=>acc+i.preco*i.quantidade,0);
+  await supabase.from("faturas").insert([{usuario_id:1,total:totalCompra,metodo_pagamento:"Dinheiro",estado:"Pendente"}]);
+  alert("Compra finalizada!");
+  carrinho=[];
+  atualizarCarrinho();
+  carregarProdutos();
+  carregarFaturas();
+});
 
-// ===== LOGIN =====  
-document.getElementById("btnEntrar").addEventListener("click", async () => {  
-  const email = emailLogin.value.trim();  
-  const senha = senhaLogin.value.trim();  
+// ===== CARREGAR FATURAS =====
+async function carregarFaturas(){
+  const { data } = await supabase.from("faturas").select("*");
+  const container=document.getElementById("faturasList");
+  container.innerHTML="";
+  if(!data) return;
+  data.forEach(f=>{
+    const div=document.createElement("div");
+    div.innerText=`Fatura: ${f.id} - Total: ${f.total} Kz - Estado: ${f.estado}`;
+    container.appendChild(div);
+  });
+}
 
-  if(!email || !senha) return alert("Preencha email e senha");  
+// Carrega produtos e faturas ao iniciar
+carregarProdutos();
+carregarFaturas();
+</script>
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });  
-
-  if(error) return alert("Erro ao entrar: "+error.message);  
-
-  usuarioLogado = data.user;  
-  document.getElementById("loginModal").style.display = "none";  
-  configurarUsuario(email);  
-  carregarProdutos();  
-  carregarFaturas();  
-});  
-
-// ===== CRIAR CONTA =====  
-document.getElementById("btnCriarConta").addEventListener("click", async () => {  
-  const email = emailLogin.value.trim();  
-  const senha = senhaLogin.value.trim();  
-  if(!email || !senha) return alert("Preencha email e senha");  
-
-  const { data, error } = await supabase.auth.signUp({ email, password: senha });  
-  if(error){  
-    if(error.message.includes("already registered")) return alert("Este email já está registrado. Tente fazer login.");  
-    return alert(error.message);  
-  }  
-
-  const tipo = email === "petersoncatari@gmail.com" ? "admin" : "cliente";  
-  await supabase.from("usuarios").insert([{ email, tipo }]);  
-
-  alert("Conta criada com sucesso! Você será logado automaticamente.");  
-
-  // Login automático após criar conta  
-  const login = await supabase.auth.signInWithPassword({ email, password: senha });  
-  usuarioLogado = login.data.user;  
-  document.getElementById("loginModal").style.display = "none";  
-  configurarUsuario(email);  
-  carregarProdutos();  
-  carregarFaturas();  
-});  
-
-// ===== LOGOUT =====  
-document.getElementById("btnLogout").addEventListener("click", async () => {  
-  await supabase.auth.signOut();  
-  usuarioLogado = null;  
-  document.getElementById("loginModal").style.display = "flex";  
-  document.getElementById("userEmail").innerText = "Visitante";  
-  document.getElementById("userTipo").innerText = "";  
-  document.getElementById("adminArea").style.display = "none";  
-  document.getElementById("clienteArea").style.display = "none";  
-});  
-
-// ===== CONFIGURAR USUÁRIO =====  
-function configurarUsuario(email){  
-  document.getElementById("userEmail").innerText = email;  
-  if(email==="petersoncatari@gmail.com"){  
-    document.getElementById("userTipo").innerText = "Administrador";  
-    document.getElementById("adminArea").style.display = "block";  
-    document.getElementById("clienteArea").style.display = "none";  
-  } else {  
-    document.getElementById("userTipo").innerText = "Cliente";  
-    document.getElementById("adminArea").style.display = "none";  
-    document.getElementById("clienteArea").style.display = "block";  
-  }  
-}  
-
-// ===== ADICIONAR ITEM (ADMIN) =====  
-document.getElementById("btnAddItem").addEventListener("click", async () => {  
-  const nome = nomeItem.value.trim();  
-  const preco = Number(precoItem.value);  
-  const quantidade = Number(quantidadeItem.value);  
-  if(!nome || preco<=0 || quantidade<=0) return alert("Preencha todos os campos corretamente");  
-  await supabase.from("itens").insert([{ nome, preco, stock: quantidade }]);  
-  alert("Item adicionado!");  
-  carregarProdutos();  
-});  
-
-// ===== CARREGAR PRODUTOS =====  
-async function carregarProdutos(){  
-  const { data } = await supabase.from("itens").select("*");  
-  const container = document.getElementById("produtosList");  
-  container.innerHTML = "";  
-  if(!data) return;  
-  data.forEach(p=>{  
-    const div = document.createElement("div");  
-    const btn = document.createElement("button");  
-    btn.textContent = "Adicionar";  
-    btn.className = "bg-blue-500 text-white px-2 py-1 rounded";  
-    btn.addEventListener("click", ()=>adicionarAoCarrinho(p.id, p.nome, p.preco, p.stock));  
-    div.textContent = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock} `;  
-    div.appendChild(btn);  
-    container.appendChild(div);  
-  });  
-}  
-
-// ===== CARRINHO =====  
-function adicionarAoCarrinho(id,nome,preco,stock){  
-  if(stock<=0) return alert("Sem estoque!");  
-  const itemExistente = carrinho.find(i=>i.id===id);  
-  if(itemExistente){  
-    if(itemExistente.quantidade<stock) itemExistente.quantidade++;  
-    else return alert("Não há mais estoque disponível");  
-  } else {  
-    carrinho.push({id,nome,preco,quantidade:1});  
-  }  
-  atualizarCarrinho();  
-}  
-
-function atualizarCarrinho(){  
-  const container = document.getElementById("carrinho");  
-  container.innerHTML = "";  
-  let total=0;  
-  carrinho.forEach((item,i)=>{  
-    total+=item.preco*item.quantidade;  
-    const div=document.createElement("div");  
-    const btn=document.createElement("button");  
-    btn.textContent="X";  
-    btn.className="bg-red-500 text-white px-1 rounded ml-2";  
-    btn.addEventListener("click",()=>removerDoCarrinho(i));  
-    div.textContent=`${item.nome} x${item.quantidade} — ${item.preco*item.quantidade} Kz`;  
-    div.appendChild(btn);  
-    container.appendChild(div);  
-  });  
-  document.getElementById("valorTotal").innerText=total+" Kz";  
-}  
-
-function removerDoCarrinho(i){  
-  carrinho.splice(i,1);  
-  atualizarCarrinho();  
-}  
-
-// ===== FINALIZAR COMPRA =====  
-document.getElementById("btnFinalizar").addEventListener("click", async()=>{  
-  if(carrinho.length===0) return alert("Carrinho vazio!");  
-  for(const item of carrinho){  
-    const { data:prod } = await supabase.from("itens").select("*").eq("id",item.id).limit(1).single();  
-    if(item.quantidade>prod.stock) return alert(`Estoque insuficiente de ${item.nome}`);  
-  }  
-  for(const item of carrinho){  
-    await supabase.from("vendas").insert([{usuario_id:usuarioLogado.id,item_id:item.id,quantidade:item.quantidade}]);  
-    const { data:prod } = await supabase.from("itens").select("*").eq("id",item.id).limit(1).single();  
-    await supabase.from("itens").update({stock:prod.stock-item.quantidade}).eq("id",item.id);  
-  }  
-  const totalCompra=carrinho.reduce((acc,i)=>acc+i.preco*i.quantidade,0);  
-  await supabase.from("faturas").insert([{usuario_id:usuarioLogado.id,total:totalCompra,metodo_pagamento:"Dinheiro",estado:"Pendente"}]);  
-  alert("Compra finalizada!");  
-  carrinho=[];  
-  atualizarCarrinho();  
-  carregarProdutos();  
-  carregarFaturas();  
-});  
-
-// ===== CARREGAR FATURAS =====  
-async function carregarFaturas(){  
-  if(!usuarioLogado) return;  
-  const { data } = await supabase.from("faturas").select("*").eq("usuario_id",usuarioLogado.id);  
-  const container=document.getElementById("faturasList");  
-  container.innerHTML="";  
-  if(!data) return;  
-  data.forEach(f=>{  
-    const div=document.createElement("div");  
-    div.innerText=`Fatura: ${f.id} - Total: ${f.total} Kz - Estado: ${f.estado}`;  
-    container.appendChild(div);  
-  });  
-}  
-</script>  
-
-</body>  
-</html>  
-
+</body>
+</html>
