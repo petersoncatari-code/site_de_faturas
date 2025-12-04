@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digital 1.9 + Supabase</title>
+<title>Digital 1.9 - Demo Funcional</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -12,7 +12,6 @@
 
 <style>
 #sugestoes { max-height: 240px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; position: absolute; width: 100%; z-index: 50; }
-#modalFatura { max-height: 90vh; overflow: auto; }
 #loginBox { max-width: 400px; margin: 40px auto; }
 input { width: 100%; padding: 10px; margin: 8px 0; }
 button { width: 100%; padding: 10px; border-radius: 6px; color: white; border: none; cursor: pointer; }
@@ -23,29 +22,26 @@ button { width: 100%; padding: 10px; border-radius: 6px; color: white; border: n
 <body class="min-h-screen bg-gradient-to-br from-blue-100 to-blue-50">
 
 <div id="loginBox" class="bg-white shadow-lg p-6 rounded-lg">
-<h2 class="text-2xl font-bold mb-4">Login / Criar Conta</h2>
-<input type="email" id="email" placeholder="Digite o seu email" class="border rounded px-3 py-2">
-<input type="password" id="senha" placeholder="Digite a senha" class="border rounded px-3 py-2">
-<button onclick="criarConta()" class="bg-green-600 mt-2">Criar Conta</button>
-<button onclick="login()" class="bg-blue-600 mt-2">Login</button>
+<h2 class="text-2xl font-bold mb-4">Bem-vindo ao Demo</h2>
+<p class="mb-4">Usuário de teste já logado</p>
 
-<div id="areaRestrita" class="hidden mt-4 p-3 bg-gray-100 rounded">
-<h3 class="text-xl font-bold">Bem-vindo, <span id="userEmail"></span></h3>
-<p id="userTipo"></p>
+<div id="areaRestrita" class="mt-4 p-3 bg-gray-100 rounded">
+<h3 class="text-xl font-bold">Bem-vindo, <span id="userEmail">teste@demo.com</span></h3>
+<p id="userTipo">Você é cliente.</p>
 
 <div id="adminArea" class="bg-red-100 p-3 rounded mt-2">
 <p class="font-bold">Área do Administrador</p>
 Você pode adicionar produtos no site.
 </div>
 
-<div id="clienteArea" class="bg-blue-100 p-3 rounded mt-2">
+<div id="clienteArea" class="bg-blue-100 p-3 rounded mt-2" style="display:block">
 <p class="font-bold">Área do Cliente</p>
 Você pode fazer compras e ver suas faturas.
 </div>
 </div>
 </div>
 
-<main id="sistemaPrincipal" class="hidden container mx-auto px-4 py-10">
+<main id="sistemaPrincipal" class="container mx-auto px-4 py-10">
 <section class="mb-16">
 <h2 class="text-3xl font-bold text-blue-700 mb-6">Nova Venda</h2>
 
@@ -88,72 +84,17 @@ class="w-full border rounded-lg px-4 py-3 shadow-sm"/>
 </section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-// === CONFIGURAÇÃO DO SUPABASE ===
-const SUPABASE_URL = "https://gvvdiddmlubezpshkkpl.supabase.co";
-const SUPABASE_ANON_KEY = "COLE_SUA_CHAVE_ANON_AQUI"; // substitua pela sua chave anon
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// === SIMULAÇÃO DE PRODUTOS ===
+let produtos = [
+  { id:1, nome:"Arroz 5kg", preco:4500 },
+  { id:2, nome:"Óleo 1L", preco:1200 },
+  { id:3, nome:"Farinha 25kg", preco:8500 },
+  { id:4, nome:"Feijão 5kg", preco:6000 },
+  { id:5, nome:"Macarrão 1kg", preco:1000 }
+];
 
-const ADMIN_EMAIL = "petersoncatari@gmail.com";
-
-let usuarioLogado = null;
 let carrinho = [];
-let produtos = [];
-
-// === FUNÇÃO CRIAR CONTA ===
-async function criarConta() {
-  let emailV = document.getElementById("email").value.trim();
-  let senhaV = document.getElementById("senha").value;
-
-  if (!emailV || !senhaV) return alert("Preencha tudo!");
-
-  let { data, error } = await supabase.auth.signUp({ email: emailV, password: senhaV });
-  if (error) return alert("Erro ao criar conta: " + error.message);
-
-  let tipo = (emailV === ADMIN_EMAIL) ? "admin" : "cliente";
-  await supabase.from("usuarios").upsert({ id_auth: data.user?.id || null, email: emailV, tipo }, { onConflict: ["email"] });
-
-  alert("Conta criada! Verifique seu email.");
-}
-
-// === FUNÇÃO LOGIN ===
-async function login() {
-  let emailV = document.getElementById("email").value.trim();
-  let senhaV = document.getElementById("senha").value;
-
-  if (!emailV || !senhaV) return alert("Preencha tudo!");
-
-  let { data, error } = await supabase.auth.signInWithPassword({ email: emailV, password: senhaV });
-  if (error) return alert("Erro ao entrar: " + error.message);
-
-  usuarioLogado = data.user;
-  document.getElementById("loginBox").classList.add("hidden");
-  document.getElementById("sistemaPrincipal").classList.remove("hidden");
-  document.getElementById("areaRestrita").classList.remove("hidden");
-  document.getElementById("userEmail").innerText = usuarioLogado.email;
-
-  let { data: perfil } = await supabase.from("usuarios").select("*").eq("id_auth", usuarioLogado.id).single();
-  if (perfil.tipo === "admin") {
-    document.getElementById("adminArea").style.display = "block";
-    document.getElementById("clienteArea").style.display = "none";
-    document.getElementById("userTipo").innerText = "Você é administrador.";
-  } else {
-    document.getElementById("adminArea").style.display = "none";
-    document.getElementById("clienteArea").style.display = "block";
-    document.getElementById("userTipo").innerText = "Você é cliente.";
-  }
-
-  await carregarProdutos();
-}
-
-// === CARREGAR PRODUTOS ===
-async function carregarProdutos() {
-  let { data, error } = await supabase.from("produtos").select("*");
-  if (error) return alert("Erro ao carregar produtos: " + error.message);
-  produtos = data;
-}
 
 // === SUGESTÕES DE PRODUTOS ===
 document.getElementById("produtoSearch").addEventListener("input", () => {
@@ -177,7 +118,6 @@ document.getElementById("produtoSearch").addEventListener("input", () => {
 document.getElementById("btnAdicionar").onclick = () => {
   let nome = document.getElementById("produtoSearch").value.trim();
   let qtd = parseInt(document.getElementById("quantidade").value);
-
   let produto = produtos.find(p => p.nome === nome);
   if (!produto) return alert("Produto inválido!");
   carrinho.push({ id: produto.id, nome: produto.nome, quantidade: qtd, preco: produto.preco });
@@ -209,22 +149,9 @@ function atualizarCarrinho() {
 }
 
 // === FINALIZAR VENDA ===
-document.getElementById("btnFinalizar").onclick = async () => {
-  if (!usuarioLogado) return alert("Faça login antes de finalizar a venda.");
+document.getElementById("btnFinalizar").onclick = () => {
   if (!carrinho.length) return alert("Carrinho vazio!");
-
-  let totalProdutos = carrinho.reduce((a, p) => a + p.quantidade, 0);
-  let valorTotalNum = carrinho.reduce((a, p) => a + p.preco * p.quantidade, 0);
-
-  let { data: faturaData, error: errF } = await supabase.from("faturas").insert([{ usuario_id: usuarioLogado.id, total_produtos: totalProdutos, valor_total: valorTotalNum }]).select().single();
-  if (errF) return alert("Erro ao criar fatura: " + errF.message);
-
-  let faturaId = faturaData.id;
-  let itensDB = carrinho.map(it => ({ fatura_id: faturaId, produto_id: it.id, nome_produto: it.nome, quantidade: it.quantidade, preco_unitario: it.preco }));
-  let { error: errItems } = await supabase.from("fatura_itens").insert(itensDB);
-  if (errItems) return alert("Erro ao salvar itens: " + errItems.message);
-
-  alert("Fatura salva com sucesso!");
+  alert("Fatura emitida com sucesso!\nTotal: " + document.getElementById("valorTotal").innerText);
   carrinho = [];
   atualizarCarrinho();
 };
