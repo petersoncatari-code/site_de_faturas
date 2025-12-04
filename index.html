@@ -72,7 +72,7 @@ button { cursor:pointer; }
 const supabaseUrl = "https://gvvdiddmlubezpshkkpl.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9gM";
 
-const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
+const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 let usuarioLogado = null;
 let carrinho = [];
@@ -171,7 +171,7 @@ function configurarUsuario(email) {
 }
 
 // ====================================================
-//  ADICIONAR ITEM (ADMIN)
+//  ADICIONAR ITEM
 // ====================================================
 document.getElementById("btnAddItem").onclick = async () => {
   const nome = nomeItem.value.trim();
