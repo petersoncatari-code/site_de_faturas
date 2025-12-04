@@ -1,91 +1,163 @@
 <!DOCTYPE html>
-
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digital 1.9 - Demo Funcional</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Digital 1.9 - Demo Funcional (Login Modal)</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
 
 <style>
-#sugestoes { max-height: 240px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; position: absolute; width: 100%; z-index: 50; }
-#loginBox { max-width: 400px; margin: 40px auto; }
-input { width: 100%; padding: 10px; margin: 8px 0; }
-button { width: 100%; padding: 10px; border-radius: 6px; color: white; border: none; cursor: pointer; }
-#adminArea, #clienteArea { display: none; }
+  /* pequenas customizações */
+  #sugestoes { max-height: 240px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; position: absolute; width: 100%; z-index: 50; }
+  #loginBox { max-width: 400px; margin: 40px auto; }
+  input { width: 100%; padding: 10px; margin: 8px 0; }
+  button { width: 100%; padding: 10px; border-radius: 6px; color: white; border: none; cursor: pointer; }
+  #adminArea, #clienteArea { display: none; }
+  /* modal backdrop */
+  .modal-backdrop { background: rgba(0,0,0,0.4); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; }
 </style>
-
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-100 to-blue-50">
 
-<div id="loginBox" class="bg-white shadow-lg p-6 rounded-lg">
-<h2 class="text-2xl font-bold mb-4">Bem-vindo ao Demo</h2>
-<p class="mb-4">Usuário de teste já logado</p>
+<!-- ========== NAV / HEADER (pequeno) ========== -->
+<header class="w-full py-4 px-6 flex justify-between items-center">
+  <h1 class="text-xl font-bold text-blue-700">Digital 1.9 - Demo</h1>
+  <div class="flex items-center gap-4">
+    <span id="userEmail" class="text-sm text-gray-700">teste@demo.com</span>
+    <span id="userTipo" class="text-sm text-gray-500">Você é cliente.</span>
+    <button id="btnLogout" class="hidden bg-red-500 text-white px-3 py-1 rounded">Sair</button>
+  </div>
+</header>
 
-<div id="areaRestrita" class="mt-4 p-3 bg-gray-100 rounded">
-<h3 class="text-xl font-bold">Bem-vindo, <span id="userEmail">teste@demo.com</span></h3>
-<p id="userTipo">Você é cliente.</p>
+<!-- ========== ÁREA PRINCIPAL (manteve teu layout) ========== -->
+<div id="loginBox" class="bg-white shadow-lg p-6 rounded-lg mx-auto max-w-3xl mt-6">
+  <h2 class="text-2xl font-bold mb-4">Bem-vindo ao Demo</h2>
+  <p class="mb-4">Usuário de teste já logado (ou faça login/crie conta)</p>
 
-<div id="adminArea" class="bg-red-100 p-3 rounded mt-2">
-<p class="font-bold">Área do Administrador</p>
-Você pode adicionar produtos no site.
-</div>
+  <div id="areaRestrita" class="mt-4 p-3 bg-gray-100 rounded">
+    <h3 class="text-xl font-bold">Bem-vindo, <span id="userEmailDisplay">teste@demo.com</span></h3>
+    <p id="userTipoDisplay">Você é cliente.</p>
 
-<div id="clienteArea" class="bg-blue-100 p-3 rounded mt-2" style="display:block">
-<p class="font-bold">Área do Cliente</p>
-Você pode fazer compras e ver suas faturas.
-</div>
-</div>
+    <div id="adminArea" class="bg-red-100 p-3 rounded mt-2">
+      <p class="font-bold">Área do Administrador</p>
+      Você pode adicionar produtos no site.
+    </div>
+
+    <div id="clienteArea" class="bg-blue-100 p-3 rounded mt-2">
+      <p class="font-bold">Área do Cliente</p>
+      Você pode fazer compras e ver suas faturas.
+    </div>
+
+    <div id="faturasArea" class="mt-3"></div>
+  </div>
 </div>
 
 <main id="sistemaPrincipal" class="container mx-auto px-4 py-10">
-<section class="mb-16">
-<h2 class="text-3xl font-bold text-blue-700 mb-6">Nova Venda</h2>
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold text-blue-700 mb-6">Nova Venda</h2>
 
-<div class="bg-white shadow-lg border rounded-xl p-6 mb-6 relative">
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="relative">
-<label class="block font-semibold mb-2 text-gray-700">Pesquisar produto</label>
-<input id="produtoSearch" type="text" placeholder="Digite o nome do produto"
-class="w-full border rounded-lg px-4 py-3 shadow-sm" autocomplete="off"/>
-<div id="sugestoes" class="hidden shadow-md"></div>
-</div>
-<div>
-<label class="block font-semibold mb-2 text-gray-700">Quantidade</label>
-<input id="quantidade" type="number" min="1" value="1"
-class="w-full border rounded-lg px-4 py-3 shadow-sm"/>
-</div>
-</div>
-<button id="btnAdicionar" class="mt-6 bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
-<i class="fas fa-cart-plus mr-2"></i>Adicionar ao Carrinho
-</button>
-</div>
+    <div class="bg-white shadow-lg border rounded-xl p-6 mb-6 relative">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="relative">
+          <label class="block font-semibold mb-2 text-gray-700">Pesquisar produto</label>
+          <input id="produtoSearch" type="text" placeholder="Digite o nome do produto"
+            class="w-full border rounded-lg px-4 py-3 shadow-sm" autocomplete="off"/>
+          <div id="sugestoes" class="hidden shadow-md"></div>
+        </div>
+        <div>
+          <label class="block font-semibold mb-2 text-gray-700">Quantidade</label>
+          <input id="quantidade" type="number" min="1" value="1"
+            class="w-full border rounded-lg px-4 py-3 shadow-sm"/>
+        </div>
+      </div>
+      <button id="btnAdicionar" class="mt-6 bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+        <i class="fas fa-cart-plus mr-2"></i>Adicionar ao Carrinho
+      </button>
+    </div>
 
-<div class="bg-white shadow-lg rounded-xl p-6 border">
-<h3 class="text-xl font-bold text-blue-700 mb-4">Carrinho de Compras</h3>
-<div id="carrinho" class="space-y-3 mb-6"></div>
-<div class="border-t pt-4">
-<div class="flex justify-between text-lg mb-3 font-semibold text-gray-700">
-<span>Total de Produtos:</span>
-<span id="totalProdutos" class="text-blue-700 font-bold">0</span>
-</div>
-<div class="flex justify-between text-xl mb-6 font-semibold text-gray-700">
-<span>Valor Total:</span>
-<span id="valorTotal" class="text-2xl text-blue-700 font-bold">0 Kz</span>
-</div>
-<button id="btnFinalizar" class="w-full bg-green-600 text-white py-4 rounded-lg text-lg font-bold">
-<i class="fas fa-receipt mr-2"></i>Finalizar Venda e Emitir Fatura
-</button>
-</div>
-</div>
-</section>
+    <div class="bg-white shadow-lg rounded-xl p-6 border">
+      <h3 class="text-xl font-bold text-blue-700 mb-4">Carrinho de Compras</h3>
+      <div id="carrinho" class="space-y-3 mb-6"></div>
+      <div class="border-t pt-4">
+        <div class="flex justify-between text-lg mb-3 font-semibold text-gray-700">
+          <span>Total de Produtos:</span>
+          <span id="totalProdutos" class="text-blue-700 font-bold">0</span>
+        </div>
+        <div class="flex justify-between text-xl mb-6 font-semibold text-gray-700">
+          <span>Valor Total:</span>
+          <span id="valorTotal" class="text-2xl text-blue-700 font-bold">0 Kz</span>
+        </div>
+        <button id="btnFinalizar" class="w-full bg-green-600 text-white py-4 rounded-lg text-lg font-bold">
+          <i class="fas fa-receipt mr-2"></i>Finalizar Venda e Emitir Fatura
+        </button>
+      </div>
+    </div>
+  </section>
 </main>
 
+<!-- ========== MODAL LOGIN / CADASTRO ========== -->
+<div id="modalRoot" class="hidden">
+  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div id="modal" class="w-full max-w-md bg-white rounded-lg shadow-lg p-6 transform transition-all">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="modalTitle" class="text-xl font-bold">Entrar</h2>
+        <button id="closeModal" class="text-gray-600">&times;</button>
+      </div>
+
+      <div id="formsContainer">
+        <!-- LOGIN FORM -->
+        <form id="loginForm" class="space-y-3">
+          <div>
+            <label class="block text-sm font-semibold">E-mail</label>
+            <input id="loginEmail" type="email" required class="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Senha</label>
+            <input id="loginSenha" type="password" required class="w-full border rounded px-3 py-2"/>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="bg-blue-600 px-4 py-2 rounded text-white">Entrar</button>
+            <button type="button" id="showCreate" class="bg-gray-200 px-4 py-2 rounded text-gray-800">Criar Conta</button>
+          </div>
+        </form>
+
+        <!-- CREATE FORM -->
+        <form id="createForm" class="space-y-3 hidden">
+          <div>
+            <label class="block text-sm font-semibold">Nome</label>
+            <input id="createNome" type="text" required class="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">E-mail</label>
+            <input id="createEmail" type="email" required class="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Senha</label>
+            <input id="createSenha" type="password" required class="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Tipo de conta</label>
+            <select id="createTipo" class="w-full border rounded px-3 py-2">
+              <option value="cliente" selected>Cliente</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="bg-green-600 px-4 py-2 rounded text-white">Criar Conta</button>
+            <button type="button" id="showLogin" class="bg-gray-200 px-4 py-2 rounded text-gray-800">Voltar ao Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-// === SIMULAÇÃO DE PRODUTOS ===
+/* =======================
+   Dados iniciais (produtos)
+   ======================= */
 let produtos = [
   { id:1, nome:"Arroz 5kg", preco:4500 },
   { id:2, nome:"Óleo 1L", preco:1200 },
@@ -96,7 +168,194 @@ let produtos = [
 
 let carrinho = [];
 
-// === SUGESTÕES DE PRODUTOS ===
+/* =======================
+   UTIL: LocalStorage para USERS + SESSION
+   ======================= */
+const USERS_KEY = 'empregue_users';
+const SESSION_KEY = 'empregue_session';
+
+function getUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  } catch(e) { return []; }
+}
+function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+
+function getSession() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; }
+}
+function setSession(session) { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+/* Cria conta demo caso nenhum user exista (facilitar testes) */
+(function ensureDemoUser(){
+  let users = getUsers();
+  if(!users.length){
+    users.push({ id: Date.now(), nome: "Teste Demo", email: "teste@demo.com", senha: "1234", tipo: "cliente", faturas: [] });
+    users.push({ id: Date.now()+1, nome: "Admin Demo", email: "admin@demo.com", senha: "admin", tipo: "admin", faturas: [] });
+    saveUsers(users);
+  }
+})();
+
+/* =======================
+   MODAL: open / close / troca de forms
+   ======================= */
+const modalRoot = document.getElementById('modalRoot');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const loginForm = document.getElementById('loginForm');
+const createForm = document.getElementById('createForm');
+const showCreate = document.getElementById('showCreate');
+const showLogin = document.getElementById('showLogin');
+const closeModal = document.getElementById('closeModal');
+
+function openModal(show='login'){
+  modalRoot.classList.remove('hidden');
+  if(show === 'login'){
+    loginForm.classList.remove('hidden');
+    createForm.classList.add('hidden');
+    modalTitle.innerText = 'Entrar';
+  } else {
+    loginForm.classList.add('hidden');
+    createForm.classList.remove('hidden');
+    modalTitle.innerText = 'Criar Conta';
+  }
+}
+function closeModalFn(){
+  modalRoot.classList.add('hidden');
+}
+
+showCreate.onclick = () => openModal('create');
+showLogin.onclick = () => openModal('login');
+closeModal.onclick = closeModalFn;
+modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModalFn(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeModalFn(); });
+
+/* =======================
+   AUTH: criar conta / login
+   ======================= */
+createForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nome = document.getElementById('createNome').value.trim();
+  const email = document.getElementById('createEmail').value.trim().toLowerCase();
+  const senha = document.getElementById('createSenha').value;
+  const tipo = document.getElementById('createTipo').value;
+
+  if(!nome || !email || !senha) return alert('Preencha todos os campos!');
+  let users = getUsers();
+  if(users.find(u => u.email === email)) return alert('E-mail já cadastrado!');
+  const novo = { id: Date.now(), nome, email, senha, tipo, faturas: [] };
+  users.push(novo);
+  saveUsers(users);
+  setSession({ id: novo.id, email: novo.email });
+  closeModalFn();
+  renderAfterLogin(novo);
+});
+
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const senha = document.getElementById('loginSenha').value;
+  let users = getUsers();
+  const user = users.find(u => u.email === email && u.senha === senha);
+  if(!user) return alert('Credenciais inválidas!');
+  setSession({ id: user.id, email: user.email });
+  closeModalFn();
+  renderAfterLogin(user);
+});
+
+/* =======================
+   RENDERIZAÇÃO APÓS LOGIN
+   ======================= */
+const userEmailSpan = document.getElementById('userEmail');
+const userTipoSpan = document.getElementById('userTipo');
+const userEmailDisplay = document.getElementById('userEmailDisplay');
+const userTipoDisplay = document.getElementById('userTipoDisplay');
+const adminArea = document.getElementById('adminArea');
+const clienteArea = document.getElementById('clienteArea');
+const faturasArea = document.getElementById('faturasArea');
+const btnLogout = document.getElementById('btnLogout');
+
+function renderAfterLogin(user){
+  // mostrar info no header e área restrita
+  userEmailSpan.innerText = user.email;
+  userTipoSpan.innerText = (user.tipo === 'admin') ? 'Você é administrador.' : 'Você é cliente.';
+  userEmailDisplay.innerText = user.nome + ' (' + user.email + ')';
+  userTipoDisplay.innerText = (user.tipo === 'admin') ? 'Administrador' : 'Cliente';
+
+  if(user.tipo === 'admin'){
+    adminArea.style.display = 'block';
+    clienteArea.style.display = 'none';
+  } else {
+    clienteArea.style.display = 'block';
+    adminArea.style.display = 'none';
+  }
+  // mostrar logout
+  btnLogout.classList.remove('hidden');
+  // carregar faturas
+  renderFaturas(user);
+}
+
+function renderFaturas(user){
+  faturasArea.innerHTML = '';
+  const title = document.createElement('h4');
+  title.className = 'font-bold mt-3';
+  title.innerText = 'Faturas do usuário:';
+  faturasArea.appendChild(title);
+
+  if(!user.faturas || !user.faturas.length){
+    const p = document.createElement('p');
+    p.className = 'text-sm text-gray-600';
+    p.innerText = 'Nenhuma fatura ainda.';
+    faturasArea.appendChild(p);
+    return;
+  }
+
+  user.faturas.slice().reverse().forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'mt-2 p-2 border rounded bg-white';
+    div.innerHTML = `<div class="flex justify-between"><strong>${f.id}</strong><span>${f.total} Kz</span></div>
+                     <div class="text-xs text-gray-600">Data: ${new Date(f.data).toLocaleString()}</div>
+                     <div class="mt-2 text-sm">${f.itens.map(i => `${i.nome}(${i.quantidade})`).join(', ')}</div>`;
+    faturasArea.appendChild(div);
+  });
+}
+
+/* logout */
+btnLogout.onclick = () => {
+  clearSession();
+  // reset UI para estado inicial
+  userEmailSpan.innerText = 'teste@demo.com';
+  userTipoSpan.innerText = 'Você é cliente.';
+  userEmailDisplay.innerText = 'teste@demo.com';
+  userTipoDisplay.innerText = 'Você é cliente.';
+  adminArea.style.display = 'none';
+  clienteArea.style.display = 'block';
+  btnLogout.classList.add('hidden');
+  faturasArea.innerHTML = '';
+  // reabrir modal para login
+  openModal('login');
+};
+
+/* ao carregar a página, se existir sessão válida, carregar user */
+(function checkSessionOnLoad(){
+  const session = getSession();
+  if(session && session.email){
+    const users = getUsers();
+    const user = users.find(u => u.email === session.email);
+    if(user) {
+      renderAfterLogin(user);
+      return;
+    }
+  }
+  // se sem sessão, abrir modal
+  openModal('login');
+})();
+
+/* =======================
+   SUGESTÕES DE PRODUTOS (mantive teu comportamento)
+   ======================= */
 document.getElementById("produtoSearch").addEventListener("input", () => {
   let texto = document.getElementById("produtoSearch").value.toLowerCase();
   let sugestoes = document.getElementById("sugestoes");
@@ -114,7 +373,9 @@ document.getElementById("produtoSearch").addEventListener("input", () => {
   sugestoes.classList.remove("hidden");
 });
 
-// === ADICIONAR AO CARRINHO ===
+/* =======================
+   CARRINHO (mantive comportamento)
+   ======================= */
 document.getElementById("btnAdicionar").onclick = () => {
   let nome = document.getElementById("produtoSearch").value.trim();
   let qtd = parseInt(document.getElementById("quantidade").value);
@@ -124,7 +385,6 @@ document.getElementById("btnAdicionar").onclick = () => {
   atualizarCarrinho();
 };
 
-// === ATUALIZAR CARRINHO ===
 function atualizarCarrinho() {
   let area = document.getElementById("carrinho");
   area.innerHTML = "";
@@ -148,15 +408,57 @@ function atualizarCarrinho() {
   document.getElementById("valorTotal").innerText = total + " Kz";
 }
 
-// === FINALIZAR VENDA ===
+/* =======================
+   FINALIZAR VENDA -> cria fatura para user logado
+   ======================= */
 document.getElementById("btnFinalizar").onclick = () => {
   if (!carrinho.length) return alert("Carrinho vazio!");
-  alert("Fatura emitida com sucesso!\nTotal: " + document.getElementById("valorTotal").innerText);
+  const session = getSession();
+  if(!session || !session.email){
+    // se não estiver logado, pede login
+    alert('Precisa fazer login para finalizar a venda.');
+    openModal('login');
+    return;
+  }
+  // buscar user e adicionar fatura
+  let users = getUsers();
+  const userIndex = users.findIndex(u => u.email === session.email);
+  if(userIndex === -1){
+    alert('Usuário da sessão não encontrado!');
+    clearSession();
+    openModal('login');
+    return;
+  }
+  const total = carrinho.reduce((s,i)=> s + i.preco * i.quantidade, 0);
+  const fatura = {
+    id: 'FAT-' + Date.now(),
+    data: new Date().toISOString(),
+    itens: carrinho.map(i => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+    total
+  };
+  users[userIndex].faturas = users[userIndex].faturas || [];
+  users[userIndex].faturas.push(fatura);
+  saveUsers(users);
+
+  // feedback e atualização UI
+  alert("Fatura emitida com sucesso!\nTotal: " + total + " Kz\nFatura: " + fatura.id);
   carrinho = [];
   atualizarCarrinho();
+  // re-render faturas
+  renderAfterLogin(users[userIndex]);
 };
+
+/* =======================
+   Pequenina melhoria visual: fechar sugestões ao clicar fora
+   ======================= */
+document.addEventListener('click', (e) => {
+  const s = document.getElementById('sugestoes');
+  const target = e.target;
+  if(!document.getElementById('produtoSearch').contains(target) && !s.contains(target)){
+    s.classList.add('hidden');
+  }
+});
 </script>
 
 </body>
 </html>
-
