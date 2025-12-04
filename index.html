@@ -7,16 +7,17 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+
 <style>
-/* Estilos gerais */
 body { font-family: sans-serif; background: #f0f4f8; margin:0; }
 #loginModal { position: fixed; inset:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:50; }
-#loginModalContent { background:white; padding:2rem; border-radius:12px; width:300px; }
+#loginModalContent { background:white; padding:2rem; border-radius:12px; width:320px; }
 input, button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:6px; border:1px solid #ccc; }
 button { cursor:pointer; }
 #adminArea, #clienteArea { display:none; margin-top:1rem; padding:1rem; border-radius:8px; }
 #adminArea { background:#fee2e2; }
 #clienteArea { background:#dbeafe; }
+#produtosList div, #carrinho div, #faturasList div { margin-bottom:0.5rem; }
 </style>
 </head>
 <body>
@@ -35,6 +36,8 @@ button { cursor:pointer; }
 <div id="loginBox" class="p-6">
   <h2>Bem-vindo, <span id="userEmail">Visitante</span></h2>
   <p id="userTipo"></p>
+  <button id="btnLogout" class="bg-red-500 text-white font-bold my-2">Sair</button>
+
   <div id="adminArea">
     <p class="font-bold">Área do Administrador</p>
     <h3>Adicionar Produto</h3>
@@ -43,6 +46,7 @@ button { cursor:pointer; }
     <input type="number" id="quantidadeItem" placeholder="Quantidade">
     <button id="btnAddItem" class="bg-green-600 text-white font-bold">Adicionar Item</button>
   </div>
+
   <div id="clienteArea">
     <p class="font-bold">Área do Cliente</p>
     <h3>Produtos</h3>
@@ -52,6 +56,7 @@ button { cursor:pointer; }
     <p>Total: <span id="valorTotal">0 Kz</span></p>
     <button id="btnFinalizar" class="bg-green-600 text-white font-bold">Finalizar Compra</button>
   </div>
+
   <h3>Faturas</h3>
   <div id="faturasList"></div>
 </div>
@@ -69,10 +74,8 @@ let carrinho = [];
 document.getElementById('btnEntrar').onclick = async () => {
   const email = emailLogin.value.trim();
   const senha = senhaLogin.value.trim();
-
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if(error) return alert(error.message);
-
   usuarioLogado = data.user;
   document.getElementById('loginModal').style.display = 'none';
   configurarUsuario(email);
@@ -84,13 +87,39 @@ document.getElementById('btnEntrar').onclick = async () => {
 document.getElementById('btnCriarConta').onclick = async () => {
   const email = emailLogin.value.trim();
   const senha = senhaLogin.value.trim();
-  const tipo = (email === 'petersoncatari@gmail.com') ? 'admin' : 'cliente';
+  if(!email || !senha) return alert('Preencha email e senha');
+
+  await supabase.auth.signOut();
 
   const { data, error } = await supabase.auth.signUp({ email, password: senha });
-  if(error) return alert(error.message);
+  if(error){
+    if(error.message.includes('already registered')){
+      return alert('Este email já está registrado. Tente fazer login.');
+    }
+    return alert(error.message);
+  }
 
-  await supabase.from('usuarios').insert([{ email, senha, tipo }]);
-  alert('Conta criada com sucesso!');
+  const tipo = (email === 'petersoncatari@gmail.com') ? 'admin' : 'cliente';
+  await supabase.from('usuarios').insert([{ email, tipo }]);
+
+  const login = await supabase.auth.signInWithPassword({ email, password: senha });
+  usuarioLogado = login.data.user;
+  document.getElementById('loginModal').style.display = 'none';
+  configurarUsuario(email);
+  carregarProdutos();
+  carregarFaturas();
+  alert('Conta criada e logado com sucesso!');
+};
+
+// === LOGOUT ===
+document.getElementById('btnLogout').onclick = async () => {
+  await supabase.auth.signOut();
+  usuarioLogado = null;
+  document.getElementById('loginModal').style.display = 'flex';
+  document.getElementById('userEmail').innerText = 'Visitante';
+  document.getElementById('userTipo').innerText = '';
+  document.getElementById('adminArea').style.display = 'none';
+  document.getElementById('clienteArea').style.display = 'none';
 };
 
 // === CONFIGURAR ÁREAS ===
@@ -112,9 +141,7 @@ document.getElementById('btnAddItem').onclick = async () => {
   const nome = nomeItem.value.trim();
   const preco = Number(precoItem.value);
   const quantidade = Number(quantidadeItem.value);
-
   if(!nome || !preco || !quantidade) return alert('Preencha todos os campos');
-
   await supabase.from('itens').insert([{ nome, preco, stock: quantidade }]);
   alert('Item adicionado!');
   carregarProdutos();
@@ -128,15 +155,14 @@ async function carregarProdutos(){
   container.innerHTML = '';
   data.forEach(p => {
     const div = document.createElement('div');
-    div.innerHTML = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock} <button onclick="adicionarAoCarrinho('${p.id}','${p.nome}',${p.preco},${p.stock})">Adicionar</button>`;
+    div.innerHTML = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock} <button onclick="adicionarAoCarrinho(${p.id},'${p.nome}',${p.preco},${p.stock})">Adicionar</button>`;
     container.appendChild(div);
   });
 }
 
 function adicionarAoCarrinho(id, nome, preco, stock){
-  const qtd = 1;
-  if(stock < qtd) return alert('Sem estoque suficiente!');
-  carrinho.push({ id, nome, preco, quantidade: qtd });
+  if(stock < 1) return alert('Sem estoque suficiente!');
+  carrinho.push({ id, nome, preco, quantidade:1 });
   atualizarCarrinho();
 }
 
@@ -163,23 +189,22 @@ document.getElementById('btnFinalizar').onclick = async () => {
   if(carrinho.length === 0) return alert('Carrinho vazio');
   for(const item of carrinho){
     await supabase.from('vendas').insert([{ usuario_id: usuarioLogado.id, item_id: item.id, quantidade: item.quantidade }]);
-    // Atualizar estoque
     const { data: prod } = await supabase.from('itens').select('*').eq('id', item.id);
     const novoStock = prod[0].stock - item.quantidade;
     await supabase.from('itens').update({ stock: novoStock }).eq('id', item.id);
   }
-  // Criar fatura
   const totalCompra = carrinho.reduce((acc, i)=> acc+i.preco*i.quantidade,0);
-  await supabase.from('faturas').insert([{ usuario_id: usuarioLogado.id, venda_id: carrinho[0].id, total: totalCompra, metodo_pagamento: 'Dinheiro' }]);
+  await supabase.from('faturas').insert([{ usuario_id: usuarioLogado.id, total: totalCompra, metodo_pagamento: 'Dinheiro', estado:'Pendente' }]);
   alert('Compra finalizada!');
   carrinho = [];
   atualizarCarrinho();
   carregarProdutos();
   carregarFaturas();
-}
+};
 
 // === CARREGAR Faturas ===
 async function carregarFaturas(){
+  if(!usuarioLogado) return;
   const { data, error } = await supabase.from('faturas').select('*').eq('usuario_id', usuarioLogado.id);
   if(error) return;
   const container = document.getElementById('faturasList');
