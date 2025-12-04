@@ -1,463 +1,195 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Digital 1.9 - Demo Funcional (Login Modal)</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital 1.9 - Supabase Integrado</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-
 <style>
-  /* pequenas customizações */
-  #sugestoes { max-height: 240px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; position: absolute; width: 100%; z-index: 50; }
-  #loginBox { max-width: 400px; margin: 40px auto; }
-  input { width: 100%; padding: 10px; margin: 8px 0; }
-  button { width: 100%; padding: 10px; border-radius: 6px; color: white; border: none; cursor: pointer; }
-  #adminArea, #clienteArea { display: none; }
-  /* modal backdrop */
-  .modal-backdrop { background: rgba(0,0,0,0.4); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; }
+/* Estilos gerais */
+body { font-family: sans-serif; background: #f0f4f8; margin:0; }
+#loginModal { position: fixed; inset:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:50; }
+#loginModalContent { background:white; padding:2rem; border-radius:12px; width:300px; }
+input, button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:6px; border:1px solid #ccc; }
+button { cursor:pointer; }
+#adminArea, #clienteArea { display:none; margin-top:1rem; padding:1rem; border-radius:8px; }
+#adminArea { background:#fee2e2; }
+#clienteArea { background:#dbeafe; }
 </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-100 to-blue-50">
+<body>
 
-<!-- ========== NAV / HEADER (pequeno) ========== -->
-<header class="w-full py-4 px-6 flex justify-between items-center">
-  <h1 class="text-xl font-bold text-blue-700">Digital 1.9 - Demo</h1>
-  <div class="flex items-center gap-4">
-    <span id="userEmail" class="text-sm text-gray-700">teste@demo.com</span>
-    <span id="userTipo" class="text-sm text-gray-500">Você é cliente.</span>
-    <button id="btnLogout" class="hidden bg-red-500 text-white px-3 py-1 rounded">Sair</button>
-  </div>
-</header>
-
-<!-- ========== ÁREA PRINCIPAL (manteve teu layout) ========== -->
-<div id="loginBox" class="bg-white shadow-lg p-6 rounded-lg mx-auto max-w-3xl mt-6">
-  <h2 class="text-2xl font-bold mb-4">Bem-vindo ao Demo</h2>
-  <p class="mb-4">Usuário de teste já logado (ou faça login/crie conta)</p>
-
-  <div id="areaRestrita" class="mt-4 p-3 bg-gray-100 rounded">
-    <h3 class="text-xl font-bold">Bem-vindo, <span id="userEmailDisplay">teste@demo.com</span></h3>
-    <p id="userTipoDisplay">Você é cliente.</p>
-
-    <div id="adminArea" class="bg-red-100 p-3 rounded mt-2">
-      <p class="font-bold">Área do Administrador</p>
-      Você pode adicionar produtos no site.
-    </div>
-
-    <div id="clienteArea" class="bg-blue-100 p-3 rounded mt-2">
-      <p class="font-bold">Área do Cliente</p>
-      Você pode fazer compras e ver suas faturas.
-    </div>
-
-    <div id="faturasArea" class="mt-3"></div>
+<!-- MODAL LOGIN -->
+<div id="loginModal">
+  <div id="loginModalContent">
+    <h2 class="text-xl font-bold mb-4 text-center">Entrar / Criar Conta</h2>
+    <input type="email" id="emailLogin" placeholder="Email">
+    <input type="password" id="senhaLogin" placeholder="Senha">
+    <button id="btnEntrar" class="bg-blue-600 text-white font-bold">Entrar</button>
+    <button id="btnCriarConta" class="bg-gray-800 text-white font-bold">Criar Conta</button>
   </div>
 </div>
 
-<main id="sistemaPrincipal" class="container mx-auto px-4 py-10">
-  <section class="mb-16">
-    <h2 class="text-3xl font-bold text-blue-700 mb-6">Nova Venda</h2>
-
-    <div class="bg-white shadow-lg border rounded-xl p-6 mb-6 relative">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="relative">
-          <label class="block font-semibold mb-2 text-gray-700">Pesquisar produto</label>
-          <input id="produtoSearch" type="text" placeholder="Digite o nome do produto"
-            class="w-full border rounded-lg px-4 py-3 shadow-sm" autocomplete="off"/>
-          <div id="sugestoes" class="hidden shadow-md"></div>
-        </div>
-        <div>
-          <label class="block font-semibold mb-2 text-gray-700">Quantidade</label>
-          <input id="quantidade" type="number" min="1" value="1"
-            class="w-full border rounded-lg px-4 py-3 shadow-sm"/>
-        </div>
-      </div>
-      <button id="btnAdicionar" class="mt-6 bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
-        <i class="fas fa-cart-plus mr-2"></i>Adicionar ao Carrinho
-      </button>
-    </div>
-
-    <div class="bg-white shadow-lg rounded-xl p-6 border">
-      <h3 class="text-xl font-bold text-blue-700 mb-4">Carrinho de Compras</h3>
-      <div id="carrinho" class="space-y-3 mb-6"></div>
-      <div class="border-t pt-4">
-        <div class="flex justify-between text-lg mb-3 font-semibold text-gray-700">
-          <span>Total de Produtos:</span>
-          <span id="totalProdutos" class="text-blue-700 font-bold">0</span>
-        </div>
-        <div class="flex justify-between text-xl mb-6 font-semibold text-gray-700">
-          <span>Valor Total:</span>
-          <span id="valorTotal" class="text-2xl text-blue-700 font-bold">0 Kz</span>
-        </div>
-        <button id="btnFinalizar" class="w-full bg-green-600 text-white py-4 rounded-lg text-lg font-bold">
-          <i class="fas fa-receipt mr-2"></i>Finalizar Venda e Emitir Fatura
-        </button>
-      </div>
-    </div>
-  </section>
-</main>
-
-<!-- ========== MODAL LOGIN / CADASTRO ========== -->
-<div id="modalRoot" class="hidden">
-  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div id="modal" class="w-full max-w-md bg-white rounded-lg shadow-lg p-6 transform transition-all">
-      <div class="flex justify-between items-center mb-4">
-        <h2 id="modalTitle" class="text-xl font-bold">Entrar</h2>
-        <button id="closeModal" class="text-gray-600">&times;</button>
-      </div>
-
-      <div id="formsContainer">
-        <!-- LOGIN FORM -->
-        <form id="loginForm" class="space-y-3">
-          <div>
-            <label class="block text-sm font-semibold">E-mail</label>
-            <input id="loginEmail" type="email" required class="w-full border rounded px-3 py-2"/>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold">Senha</label>
-            <input id="loginSenha" type="password" required class="w-full border rounded px-3 py-2"/>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="bg-blue-600 px-4 py-2 rounded text-white">Entrar</button>
-            <button type="button" id="showCreate" class="bg-gray-200 px-4 py-2 rounded text-gray-800">Criar Conta</button>
-          </div>
-        </form>
-
-        <!-- CREATE FORM -->
-        <form id="createForm" class="space-y-3 hidden">
-          <div>
-            <label class="block text-sm font-semibold">Nome</label>
-            <input id="createNome" type="text" required class="w-full border rounded px-3 py-2"/>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold">E-mail</label>
-            <input id="createEmail" type="email" required class="w-full border rounded px-3 py-2"/>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold">Senha</label>
-            <input id="createSenha" type="password" required class="w-full border rounded px-3 py-2"/>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold">Tipo de conta</label>
-            <select id="createTipo" class="w-full border rounded px-3 py-2">
-              <option value="cliente" selected>Cliente</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="bg-green-600 px-4 py-2 rounded text-white">Criar Conta</button>
-            <button type="button" id="showLogin" class="bg-gray-200 px-4 py-2 rounded text-gray-800">Voltar ao Login</button>
-          </div>
-        </form>
-      </div>
-    </div>
+<div id="loginBox" class="p-6">
+  <h2>Bem-vindo, <span id="userEmail">Visitante</span></h2>
+  <p id="userTipo"></p>
+  <div id="adminArea">
+    <p class="font-bold">Área do Administrador</p>
+    <h3>Adicionar Produto</h3>
+    <input type="text" id="nomeItem" placeholder="Nome do produto">
+    <input type="number" id="precoItem" placeholder="Preço">
+    <input type="number" id="quantidadeItem" placeholder="Quantidade">
+    <button id="btnAddItem" class="bg-green-600 text-white font-bold">Adicionar Item</button>
   </div>
+  <div id="clienteArea">
+    <p class="font-bold">Área do Cliente</p>
+    <h3>Produtos</h3>
+    <div id="produtosList"></div>
+    <h3>Carrinho</h3>
+    <div id="carrinho"></div>
+    <p>Total: <span id="valorTotal">0 Kz</span></p>
+    <button id="btnFinalizar" class="bg-green-600 text-white font-bold">Finalizar Compra</button>
+  </div>
+  <h3>Faturas</h3>
+  <div id="faturasList"></div>
 </div>
 
 <script>
-/* =======================
-   Dados iniciais (produtos)
-   ======================= */
-let produtos = [
-  { id:1, nome:"Arroz 5kg", preco:4500 },
-  { id:2, nome:"Óleo 1L", preco:1200 },
-  { id:3, nome:"Farinha 25kg", preco:8500 },
-  { id:4, nome:"Feijão 5kg", preco:6000 },
-  { id:5, nome:"Macarrão 1kg", preco:1000 }
-];
+// === SUPABASE ===
+const supabaseUrl = 'https://gvvdiddmlubezpshkkpl.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9gM';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+let usuarioLogado = null;
 let carrinho = [];
 
-/* =======================
-   UTIL: LocalStorage para USERS + SESSION
-   ======================= */
-const USERS_KEY = 'empregue_users';
-const SESSION_KEY = 'empregue_session';
+// === LOGIN ===
+document.getElementById('btnEntrar').onclick = async () => {
+  const email = emailLogin.value.trim();
+  const senha = senhaLogin.value.trim();
 
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  } catch(e) { return []; }
-}
-function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+  if(error) return alert(error.message);
 
-function getSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){ return null; }
-}
-function setSession(session) { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
-function clearSession() { localStorage.removeItem(SESSION_KEY); }
+  usuarioLogado = data.user;
+  document.getElementById('loginModal').style.display = 'none';
+  configurarUsuario(email);
+  carregarProdutos();
+  carregarFaturas();
+};
 
-/* Cria conta demo caso nenhum user exista (facilitar testes) */
-(function ensureDemoUser(){
-  let users = getUsers();
-  if(!users.length){
-    users.push({ id: Date.now(), nome: "Teste Demo", email: "teste@demo.com", senha: "1234", tipo: "cliente", faturas: [] });
-    users.push({ id: Date.now()+1, nome: "Admin Demo", email: "admin@demo.com", senha: "admin", tipo: "admin", faturas: [] });
-    saveUsers(users);
-  }
-})();
+// === CRIAR CONTA ===
+document.getElementById('btnCriarConta').onclick = async () => {
+  const email = emailLogin.value.trim();
+  const senha = senhaLogin.value.trim();
+  const tipo = (email === 'petersoncatari@gmail.com') ? 'admin' : 'cliente';
 
-/* =======================
-   MODAL: open / close / troca de forms
-   ======================= */
-const modalRoot = document.getElementById('modalRoot');
-const modalBackdrop = document.getElementById('modalBackdrop');
-const modal = document.getElementById('modal');
-const modalTitle = document.getElementById('modalTitle');
-const loginForm = document.getElementById('loginForm');
-const createForm = document.getElementById('createForm');
-const showCreate = document.getElementById('showCreate');
-const showLogin = document.getElementById('showLogin');
-const closeModal = document.getElementById('closeModal');
+  const { data, error } = await supabase.auth.signUp({ email, password: senha });
+  if(error) return alert(error.message);
 
-function openModal(show='login'){
-  modalRoot.classList.remove('hidden');
-  if(show === 'login'){
-    loginForm.classList.remove('hidden');
-    createForm.classList.add('hidden');
-    modalTitle.innerText = 'Entrar';
+  await supabase.from('usuarios').insert([{ email, senha, tipo }]);
+  alert('Conta criada com sucesso!');
+};
+
+// === CONFIGURAR ÁREAS ===
+function configurarUsuario(email){
+  document.getElementById('userEmail').innerText = email;
+  if(email === 'petersoncatari@gmail.com'){
+    document.getElementById('userTipo').innerText = 'Administrador';
+    document.getElementById('adminArea').style.display = 'block';
+    document.getElementById('clienteArea').style.display = 'none';
   } else {
-    loginForm.classList.add('hidden');
-    createForm.classList.remove('hidden');
-    modalTitle.innerText = 'Criar Conta';
+    document.getElementById('userTipo').innerText = 'Cliente';
+    document.getElementById('adminArea').style.display = 'none';
+    document.getElementById('clienteArea').style.display = 'block';
   }
 }
-function closeModalFn(){
-  modalRoot.classList.add('hidden');
-}
 
-showCreate.onclick = () => openModal('create');
-showLogin.onclick = () => openModal('login');
-closeModal.onclick = closeModalFn;
-modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModalFn(); });
-document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeModalFn(); });
+// === ADICIONAR ITEM (ADMIN) ===
+document.getElementById('btnAddItem').onclick = async () => {
+  const nome = nomeItem.value.trim();
+  const preco = Number(precoItem.value);
+  const quantidade = Number(quantidadeItem.value);
 
-/* =======================
-   AUTH: criar conta / login
-   ======================= */
-createForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const nome = document.getElementById('createNome').value.trim();
-  const email = document.getElementById('createEmail').value.trim().toLowerCase();
-  const senha = document.getElementById('createSenha').value;
-  const tipo = document.getElementById('createTipo').value;
+  if(!nome || !preco || !quantidade) return alert('Preencha todos os campos');
 
-  if(!nome || !email || !senha) return alert('Preencha todos os campos!');
-  let users = getUsers();
-  if(users.find(u => u.email === email)) return alert('E-mail já cadastrado!');
-  const novo = { id: Date.now(), nome, email, senha, tipo, faturas: [] };
-  users.push(novo);
-  saveUsers(users);
-  setSession({ id: novo.id, email: novo.email });
-  closeModalFn();
-  renderAfterLogin(novo);
-});
+  await supabase.from('itens').insert([{ nome, preco, stock: quantidade }]);
+  alert('Item adicionado!');
+  carregarProdutos();
+};
 
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const senha = document.getElementById('loginSenha').value;
-  let users = getUsers();
-  const user = users.find(u => u.email === email && u.senha === senha);
-  if(!user) return alert('Credenciais inválidas!');
-  setSession({ id: user.id, email: user.email });
-  closeModalFn();
-  renderAfterLogin(user);
-});
-
-/* =======================
-   RENDERIZAÇÃO APÓS LOGIN
-   ======================= */
-const userEmailSpan = document.getElementById('userEmail');
-const userTipoSpan = document.getElementById('userTipo');
-const userEmailDisplay = document.getElementById('userEmailDisplay');
-const userTipoDisplay = document.getElementById('userTipoDisplay');
-const adminArea = document.getElementById('adminArea');
-const clienteArea = document.getElementById('clienteArea');
-const faturasArea = document.getElementById('faturasArea');
-const btnLogout = document.getElementById('btnLogout');
-
-function renderAfterLogin(user){
-  // mostrar info no header e área restrita
-  userEmailSpan.innerText = user.email;
-  userTipoSpan.innerText = (user.tipo === 'admin') ? 'Você é administrador.' : 'Você é cliente.';
-  userEmailDisplay.innerText = user.nome + ' (' + user.email + ')';
-  userTipoDisplay.innerText = (user.tipo === 'admin') ? 'Administrador' : 'Cliente';
-
-  if(user.tipo === 'admin'){
-    adminArea.style.display = 'block';
-    clienteArea.style.display = 'none';
-  } else {
-    clienteArea.style.display = 'block';
-    adminArea.style.display = 'none';
-  }
-  // mostrar logout
-  btnLogout.classList.remove('hidden');
-  // carregar faturas
-  renderFaturas(user);
-}
-
-function renderFaturas(user){
-  faturasArea.innerHTML = '';
-  const title = document.createElement('h4');
-  title.className = 'font-bold mt-3';
-  title.innerText = 'Faturas do usuário:';
-  faturasArea.appendChild(title);
-
-  if(!user.faturas || !user.faturas.length){
-    const p = document.createElement('p');
-    p.className = 'text-sm text-gray-600';
-    p.innerText = 'Nenhuma fatura ainda.';
-    faturasArea.appendChild(p);
-    return;
-  }
-
-  user.faturas.slice().reverse().forEach(f => {
+// === CARREGAR PRODUTOS ===
+async function carregarProdutos(){
+  const { data, error } = await supabase.from('itens').select('*');
+  if(error) return;
+  const container = document.getElementById('produtosList');
+  container.innerHTML = '';
+  data.forEach(p => {
     const div = document.createElement('div');
-    div.className = 'mt-2 p-2 border rounded bg-white';
-    div.innerHTML = `<div class="flex justify-between"><strong>${f.id}</strong><span>${f.total} Kz</span></div>
-                     <div class="text-xs text-gray-600">Data: ${new Date(f.data).toLocaleString()}</div>
-                     <div class="mt-2 text-sm">${f.itens.map(i => `${i.nome}(${i.quantidade})`).join(', ')}</div>`;
-    faturasArea.appendChild(div);
+    div.innerHTML = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock} <button onclick="adicionarAoCarrinho('${p.id}','${p.nome}',${p.preco},${p.stock})">Adicionar</button>`;
+    container.appendChild(div);
   });
 }
 
-/* logout */
-btnLogout.onclick = () => {
-  clearSession();
-  // reset UI para estado inicial
-  userEmailSpan.innerText = 'teste@demo.com';
-  userTipoSpan.innerText = 'Você é cliente.';
-  userEmailDisplay.innerText = 'teste@demo.com';
-  userTipoDisplay.innerText = 'Você é cliente.';
-  adminArea.style.display = 'none';
-  clienteArea.style.display = 'block';
-  btnLogout.classList.add('hidden');
-  faturasArea.innerHTML = '';
-  // reabrir modal para login
-  openModal('login');
-};
-
-/* ao carregar a página, se existir sessão válida, carregar user */
-(function checkSessionOnLoad(){
-  const session = getSession();
-  if(session && session.email){
-    const users = getUsers();
-    const user = users.find(u => u.email === session.email);
-    if(user) {
-      renderAfterLogin(user);
-      return;
-    }
-  }
-  // se sem sessão, abrir modal
-  openModal('login');
-})();
-
-/* =======================
-   SUGESTÕES DE PRODUTOS (mantive teu comportamento)
-   ======================= */
-document.getElementById("produtoSearch").addEventListener("input", () => {
-  let texto = document.getElementById("produtoSearch").value.toLowerCase();
-  let sugestoes = document.getElementById("sugestoes");
-  sugestoes.innerHTML = "";
-  if (!texto) return sugestoes.classList.add("hidden");
-
-  let filtrados = produtos.filter(p => p.nome.toLowerCase().includes(texto));
-  filtrados.forEach(p => {
-    let div = document.createElement("div");
-    div.className = "px-4 py-2 hover:bg-gray-100 cursor-pointer";
-    div.textContent = p.nome;
-    div.onclick = () => { document.getElementById("produtoSearch").value = p.nome; sugestoes.classList.add("hidden"); };
-    sugestoes.appendChild(div);
-  });
-  sugestoes.classList.remove("hidden");
-});
-
-/* =======================
-   CARRINHO (mantive comportamento)
-   ======================= */
-document.getElementById("btnAdicionar").onclick = () => {
-  let nome = document.getElementById("produtoSearch").value.trim();
-  let qtd = parseInt(document.getElementById("quantidade").value);
-  let produto = produtos.find(p => p.nome === nome);
-  if (!produto) return alert("Produto inválido!");
-  carrinho.push({ id: produto.id, nome: produto.nome, quantidade: qtd, preco: produto.preco });
+function adicionarAoCarrinho(id, nome, preco, stock){
+  const qtd = 1;
+  if(stock < qtd) return alert('Sem estoque suficiente!');
+  carrinho.push({ id, nome, preco, quantidade: qtd });
   atualizarCarrinho();
-};
+}
 
-function atualizarCarrinho() {
-  let area = document.getElementById("carrinho");
-  area.innerHTML = "";
-  let total = 0, totalProdutos = 0;
+function atualizarCarrinho(){
+  const container = document.getElementById('carrinho');
+  container.innerHTML = '';
+  let total = 0;
   carrinho.forEach((item, i) => {
     total += item.preco * item.quantidade;
-    totalProdutos += item.quantidade;
-    let div = document.createElement("div");
-    div.className = "flex justify-between bg-gray-100 p-2 rounded";
-    div.innerHTML = `<span>${item.nome} (${item.quantidade})</span><div><span class="mr-2">${item.preco * item.quantidade} Kz</span><button data-i="${i}" class="remItem bg-red-500 text-white px-2 py-1 rounded">X</button></div>`;
-    area.appendChild(div);
+    const div = document.createElement('div');
+    div.innerHTML = `${item.nome} x${item.quantidade} - ${item.preco*item.quantidade} Kz <button onclick='removerDoCarrinho(${i})'>X</button>`;
+    container.appendChild(div);
   });
-
-  document.querySelectorAll(".remItem").forEach(b => b.onclick = () => {
-    let idx = Number(b.dataset.i);
-    carrinho.splice(idx, 1);
-    atualizarCarrinho();
-  });
-
-  document.getElementById("totalProdutos").innerText = totalProdutos;
-  document.getElementById("valorTotal").innerText = total + " Kz";
+  document.getElementById('valorTotal').innerText = total + ' Kz';
 }
 
-/* =======================
-   FINALIZAR VENDA -> cria fatura para user logado
-   ======================= */
-document.getElementById("btnFinalizar").onclick = () => {
-  if (!carrinho.length) return alert("Carrinho vazio!");
-  const session = getSession();
-  if(!session || !session.email){
-    // se não estiver logado, pede login
-    alert('Precisa fazer login para finalizar a venda.');
-    openModal('login');
-    return;
-  }
-  // buscar user e adicionar fatura
-  let users = getUsers();
-  const userIndex = users.findIndex(u => u.email === session.email);
-  if(userIndex === -1){
-    alert('Usuário da sessão não encontrado!');
-    clearSession();
-    openModal('login');
-    return;
-  }
-  const total = carrinho.reduce((s,i)=> s + i.preco * i.quantidade, 0);
-  const fatura = {
-    id: 'FAT-' + Date.now(),
-    data: new Date().toISOString(),
-    itens: carrinho.map(i => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
-    total
-  };
-  users[userIndex].faturas = users[userIndex].faturas || [];
-  users[userIndex].faturas.push(fatura);
-  saveUsers(users);
+function removerDoCarrinho(idx){
+  carrinho.splice(idx,1);
+  atualizarCarrinho();
+}
 
-  // feedback e atualização UI
-  alert("Fatura emitida com sucesso!\nTotal: " + total + " Kz\nFatura: " + fatura.id);
+// === FINALIZAR COMPRA ===
+document.getElementById('btnFinalizar').onclick = async () => {
+  if(carrinho.length === 0) return alert('Carrinho vazio');
+  for(const item of carrinho){
+    await supabase.from('vendas').insert([{ usuario_id: usuarioLogado.id, item_id: item.id, quantidade: item.quantidade }]);
+    // Atualizar estoque
+    const { data: prod } = await supabase.from('itens').select('*').eq('id', item.id);
+    const novoStock = prod[0].stock - item.quantidade;
+    await supabase.from('itens').update({ stock: novoStock }).eq('id', item.id);
+  }
+  // Criar fatura
+  const totalCompra = carrinho.reduce((acc, i)=> acc+i.preco*i.quantidade,0);
+  await supabase.from('faturas').insert([{ usuario_id: usuarioLogado.id, venda_id: carrinho[0].id, total: totalCompra, metodo_pagamento: 'Dinheiro' }]);
+  alert('Compra finalizada!');
   carrinho = [];
   atualizarCarrinho();
-  // re-render faturas
-  renderAfterLogin(users[userIndex]);
-};
+  carregarProdutos();
+  carregarFaturas();
+}
 
-/* =======================
-   Pequenina melhoria visual: fechar sugestões ao clicar fora
-   ======================= */
-document.addEventListener('click', (e) => {
-  const s = document.getElementById('sugestoes');
-  const target = e.target;
-  if(!document.getElementById('produtoSearch').contains(target) && !s.contains(target)){
-    s.classList.add('hidden');
-  }
-});
+// === CARREGAR Faturas ===
+async function carregarFaturas(){
+  const { data, error } = await supabase.from('faturas').select('*').eq('usuario_id', usuarioLogado.id);
+  if(error) return;
+  const container = document.getElementById('faturasList');
+  container.innerHTML = '';
+  data.forEach(f => {
+    const div = document.createElement('div');
+    div.innerText = `Fatura: ${f.id} - Total: ${f.total} Kz - Estado: ${f.estado}`;
+    container.appendChild(div);
+  });
+}
 </script>
 
 </body>
