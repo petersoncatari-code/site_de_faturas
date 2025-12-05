@@ -1,71 +1,4 @@
 <!DOCTYPE html>
-
-<html lang="pt">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerador de Faturas Supabase</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/supabase.min.js"></script>
-
-<style>
-body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(to right, #e0f2ff, #ffffff); margin:0; }
-.container { max-width:900px; margin:2rem auto; padding:1rem; }
-h2,h3 { color:#1e3a8a; margin-bottom:0.5rem; }
-input,button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:8px; border:1px solid #ccc; }
-button { font-weight:bold; cursor:pointer; }
-#clienteArea { margin-top:1.5rem; padding:1rem; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); background:#dbeafe; }
-#produtosList div,#carrinho div { margin-bottom:0.5rem; padding:0.5rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #93c5fd; background:white; }
-#produtosList div:hover,#carrinho div:hover { transform: scale(1.02); transition:0.2s; }
-#produtosList div button,#carrinho div button { width:auto; margin:0; padding:0.25rem 0.5rem; border-radius:6px; }
-#faturaModal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:50; }
-#faturaContent { background:white; padding:2rem; border-radius:12px; max-width:600px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.3); overflow:auto; max-height:90vh; }
-#faturaContent table { width:100%; border-collapse:collapse; margin-bottom:1rem; }
-#faturaContent th,#faturaContent td { border:1px solid #93c5fd; padding:0.5rem; text-align:center; }
-#faturaContent th { background:#1e40af; color:white; }
-</style>
-
-</head>
-<body>
-
-<div class="container">
-  <h2 class="text-2xl font-bold mb-4">Gerador de Faturas</h2>
-
-  <input type="text" id="searchProduto" placeholder="Pesquise um produto...">
-
-  <div id="clienteArea">
-    <p class="font-bold text-lg mb-2">Produtos Disponíveis</p>
-    <div id="produtosList"></div>
-
-<h3>Carrinho</h3>
-<div id="carrinho"></div>
-<p>Total: <span id="valorTotal">0 Kz</span></p>
-<button id="btnFinalizar" class="bg-blue-600 text-white font-bold">Finalizar Compra</button>
-
-<h3 class="mt-4">Buscar Faturas pelo Gmail</h3>
-<input type="text" id="searchFaturas" placeholder="Digite seu Gmail...">
-<div id="faturasEncontradas"></div>
-
-  </div>
-</div>
-
-<div id="faturaModal" class="flex">
-  <div id="faturaContent">
-    <h3>Fatura - Preencha os dados</h3>
-    <input type="text" id="clienteNome" placeholder="Nome completo">
-    <input type="email" id="clienteEmail" placeholder="Gmail">
-    <div id="faturaDetalhes" class="mt-2 mb-2"></div>
-    <button id="btnSalvarFatura" class="bg-green-600 text-white font-bold mb-2">Salvar Fatura</button>
-    <button id="btnFechar" class="bg-gray-500 text-white font-bold">Fechar</button>
-  </div>
-</div>
-
-<!DOCTYPE html>
-
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
@@ -305,3 +238,4 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 </body>
 </html>
+
