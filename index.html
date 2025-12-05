@@ -1,242 +1,120 @@
-<!DOCTYPE html>
-
-<html lang="pt">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerador de Faturas Supabase</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/supabase.min.js"></script>
-
-<style>
-body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(to right, #e0f2ff, #ffffff); margin:0; }
-.container { max-width:900px; margin:2rem auto; padding:1rem; }
-h2,h3 { color:#1e3a8a; margin-bottom:0.5rem; }
-input,button { width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:8px; border:1px solid #ccc; }
-button { font-weight:bold; cursor:pointer; }
-#clienteArea { margin-top:1.5rem; padding:1rem; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); background:#dbeafe; }
-#produtosList div,#carrinho div { margin-bottom:0.5rem; padding:0.5rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #93c5fd; background:white; }
-#produtosList div:hover,#carrinho div:hover { transform: scale(1.02); transition:0.2s; }
-#produtosList div button,#carrinho div button { width:auto; margin:0; padding:0.25rem 0.5rem; border-radius:6px; }
-#faturaModal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:50; }
-#faturaContent { background:white; padding:2rem; border-radius:12px; max-width:600px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.3); overflow:auto; max-height:90vh; }
-#faturaContent table { width:100%; border-collapse:collapse; margin-bottom:1rem; }
-#faturaContent th,#faturaContent td { border:1px solid #93c5fd; padding:0.5rem; text-align:center; }
-#faturaContent th { background:#1e40af; color:white; }
-</style>
-
-</head>
-<body>
-
-<div class="container">
-  <h2 class="text-2xl font-bold mb-4">Gerador de Faturas</h2>
-
-  <input type="text" id="searchProduto" placeholder="Pesquise um produto...">
-
-  <div id="clienteArea">
-    <p class="font-bold text-lg mb-2">Produtos Disponíveis</p>
-    <div id="produtosList"></div>
-
-<h3>Carrinho</h3>
-<div id="carrinho"></div>
-<p>Total: <span id="valorTotal">0 Kz</span></p>
-<button id="btnFinalizar" class="bg-blue-600 text-white font-bold">Finalizar Compra</button>
-
-<h3 class="mt-4">Buscar Faturas pelo Gmail</h3>
-<input type="text" id="searchFaturas" placeholder="Digite seu Gmail...">
-<div id="faturasEncontradas"></div>
-
-  </div>
-</div>
-
-<div id="faturaModal" class="flex">
-  <div id="faturaContent">
-    <h3>Fatura - Preencha os dados</h3>
-    <input type="text" id="clienteNome" placeholder="Nome completo">
-    <input type="email" id="clienteEmail" placeholder="Gmail">
-    <div id="faturaDetalhes" class="mt-2 mb-2"></div>
-    <button id="btnSalvarFatura" class="bg-green-600 text-white font-bold mb-2">Salvar Fatura</button>
-    <button id="btnFechar" class="bg-gray-500 text-white font-bold">Fechar</button>
-  </div>
-</div>
-
 <script>
-document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", () => {
+  // ====== SUPABASE ======
   const SUPABASE_URL = "https://gvvdiddmlubezpshkkpl.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9yM";
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  function carregarProdutos(filter=""){
-  const produtos = [
+  let carrinho = [];
+
+  const produtosDefault = [
     {id:1, nome:"Arroz 5kg", preco:4500, stock:10},
     {id:2, nome:"Óleo 1L", preco:1200, stock:20},
     {id:3, nome:"Farinha 1kg", preco:800, stock:15},
     {id:4, nome:"Macarrão 500g", preco:600, stock:25}
   ];
-  const container = document.getElementById("produtosList");
-  container.innerHTML = "";
-  const filtrados = produtos.filter(p=>p.nome.toLowerCase().includes(filter.toLowerCase()));
-  filtrados.forEach(p=>{
-    const div=document.createElement("div");
-    div.textContent=`${p.nome} - ${p.preco} Kz - Estoque: ${p.stock}`;
-    const btn=document.createElement("button");
-    btn.textContent="Adicionar";
-    btn.className="bg-blue-500 text-white px-2 py-1 rounded";
-    btn.addEventListener("click",()=>adicionarAoCarrinho(p.id,p.nome,p.preco,p.stock));
-    div.appendChild(btn);
-    container.appendChild(div);
-  });
-}
 
-
-  document.getElementById("searchProduto").addEventListener("input", e=>{
-    carregarProdutos(e.target.value);
-  });
-
-  function adicionarAoCarrinho(id,nome,preco,stock){
-    if(stock<=0) return alert("Sem estoque!");
-    const itemExistente = carrinho.find(i=>i.id===id);
-    if(itemExistente){
-      if(itemExistente.quantidade<stock) itemExistente.quantidade++;
-      else return alert("Não há mais estoque disponível");
-    } else {
-      carrinho.push({id,nome,preco,quantidade:1});
+  async function carregarProdutos(filter = "") {
+    let produtosBD;
+    try {
+      const { data, error } = await supabaseClient
+        .from("produtos")
+        .select("*")
+        .ilike("nome", `%${filter}%`)
+        .gt("stock", 0);
+      if (error) throw error;
+      produtosBD = data.length > 0 ? data : produtosDefault;
+    } catch (e) {
+      produtosBD = produtosDefault; // fallback se Supabase falhar
     }
-    atualizarCarrinho();
-  }
 
-  function atualizarCarrinho(){
-    const container = document.getElementById("carrinho");
+    const container = document.getElementById("produtosList");
     container.innerHTML = "";
-    let total=0;
-    carrinho.forEach((item,i)=>{
-      total+=item.preco*item.quantidade;
-      const div=document.createElement("div");
+    produtosBD.forEach(p => {
+      if (!p.nome.toLowerCase().includes(filter.toLowerCase())) return;
+      const div = document.createElement("div");
       const span = document.createElement("span");
-      span.textContent=`${item.nome} x${item.quantidade} — ${item.preco*item.quantidade} Kz`;
-      const btn=document.createElement("button");
-      btn.textContent="X";
-      btn.className="bg-red-500 text-white px-1 rounded ml-2";
-      btn.addEventListener("click",()=>removerDoCarrinho(i));
+      span.textContent = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock}`;
+      const btn = document.createElement("button");
+      btn.textContent = "Adicionar";
+      btn.className = "bg-blue-500 text-white px-2 py-1 rounded";
+      btn.addEventListener("click", () => adicionarAoCarrinho(p.id, p.nome, p.preco, p.stock));
       div.appendChild(span);
       div.appendChild(btn);
       container.appendChild(div);
     });
-    document.getElementById("valorTotal").innerText=total+" Kz";
   }
 
-  function removerDoCarrinho(i){
-    carrinho.splice(i,1);
+  document.getElementById("searchProduto").addEventListener("input", e => {
+    carregarProdutos(e.target.value);
+  });
+
+  function adicionarAoCarrinho(id, nome, preco, stock) {
+    if (stock <= 0) return alert("Sem estoque!");
+    const itemExistente = carrinho.find(i => i.id === id);
+    if (itemExistente) {
+      if (itemExistente.quantidade < stock) itemExistente.quantidade++;
+      else return alert("Não há mais estoque disponível");
+    } else {
+      carrinho.push({ id, nome, preco, quantidade: 1 });
+    }
     atualizarCarrinho();
   }
 
-  document.getElementById("btnFinalizar").addEventListener("click", ()=>{
-    if(carrinho.length===0) return alert("Carrinho vazio!");
+  function atualizarCarrinho() {
+    const container = document.getElementById("carrinho");
+    container.innerHTML = "";
+    let total = 0;
+    carrinho.forEach((item, i) => {
+      total += item.preco * item.quantidade;
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      span.textContent = `${item.nome} x${item.quantidade} — ${item.preco*item.quantidade} Kz`;
+      const btn = document.createElement("button");
+      btn.textContent = "X";
+      btn.className = "bg-red-500 text-white px-1 rounded ml-2";
+      btn.addEventListener("click", () => removerDoCarrinho(i));
+      div.appendChild(span);
+      div.appendChild(btn);
+      container.appendChild(div);
+    });
+    document.getElementById("valorTotal").innerText = total + " Kz";
+  }
+
+  function removerDoCarrinho(i) {
+    carrinho.splice(i, 1);
+    atualizarCarrinho();
+  }
+
+  document.getElementById("btnFinalizar").addEventListener("click", () => {
+    if (carrinho.length === 0) return alert("Carrinho vazio!");
     abrirModalFatura();
   });
 
-  function abrirModalFatura(){
+  function abrirModalFatura() {
     const faturaDiv = document.getElementById("faturaDetalhes");
     let total = 0;
     let html = `<table>
       <tr><th>Produto</th><th>Preço unit.</th><th>Qtd</th><th>Subtotal</th></tr>`;
-    carrinho.forEach(item=>{
-      const subtotal = item.preco*item.quantidade;
-      total+=subtotal;
-      html+=`<tr>
+    carrinho.forEach(item => {
+      const subtotal = item.preco * item.quantidade;
+      total += subtotal;
+      html += `<tr>
         <td>${item.nome}</td>
         <td>${item.preco} Kz</td>
         <td>${item.quantidade}</td>
         <td>${subtotal} Kz</td>
       </tr>`;
     });
-    html+=`<tr><th colspan="3">Total</th><th>${total} Kz</th></tr></table>`;
+    html += `<tr><th colspan="3">Total</th><th>${total} Kz</th></tr></table>`;
     faturaDiv.innerHTML = html;
     document.getElementById("faturaModal").style.display = "flex";
   }
 
-  document.getElementById("btnFechar").addEventListener("click", async ()=>{
-    await salvarFatura(false);
+  document.getElementById("btnFechar").addEventListener("click", () => {
     document.getElementById("faturaModal").style.display = "none";
   });
 
-  document.getElementById("btnSalvarFatura").addEventListener("click", ()=>salvarFatura(true));
-
-  async function salvarFatura(downloadPDF){
-    const nome = document.getElementById("clienteNome").value.trim();
-    const email = document.getElementById("clienteEmail").value.trim();
-    if(!nome || !email) return alert("Preencha nome e Gmail!");
-    if(carrinho.length===0) return alert("Carrinho vazio!");
-
-    const total = carrinho.reduce((acc,i)=>acc+i.preco*i.quantidade,0);
-    const itens = carrinho.map(i=>({id:i.id, nome:i.nome, preco:i.preco, quantidade:i.quantidade, subtotal:i.preco*i.quantidade}));
-
-    const {data,error} = await supabase.from("faturas").insert([
-      {cliente_nome: nome, cliente_email: email, total: total, itens_json: itens}
-    ]);
-    if(error) return alert("Erro ao salvar fatura: "+error.message);
-
-    if(downloadPDF) baixarPDF({cliente_nome:nome, cliente_email:email, total:total, itens_json:itens});
-
-    carrinho = [];
-    atualizarCarrinho();
-    carregarProdutos(document.getElementById("searchProduto").value);
-    buscarFaturas();
-  }
-
-  document.getElementById("searchFaturas").addEventListener("input", buscarFaturas);
-
-  async function buscarFaturas(){
-    const email = document.getElementById("searchFaturas").value.trim();
-    if(!email) return document.getElementById("faturasEncontradas").innerHTML = "";
-
-    const {data,error} = await supabase.from("faturas").select("*").ilike("cliente_email","%"+email+"%");
-    if(error) return alert("Erro ao buscar faturas: "+error.message);
-
-    const container = document.getElementById("faturasEncontradas");
-    container.innerHTML = "";
-    data.forEach(f=>{
-      const div = document.createElement("div");
-      div.className = "border p-2 rounded mb-1 bg-white flex justify-between items-center";
-      const itensText = f.itens_json.map(i=>`${i.nome} x${i.quantidade}`).join(", ");
-      div.innerHTML = `<span>${f.cliente_nome} — ${itensText} — Total: ${f.total} Kz</span>`;
-      const btn = document.createElement("button");
-      btn.textContent = "Baixar PDF";
-      btn.className = "bg-blue-500 text-white px-2 py-1 rounded";
-      btn.addEventListener("click", ()=>baixarPDF(f));
-      div.appendChild(btn);
-      container.appendChild(div);
-    });
-  }
-
-  function baixarPDF(fatura){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const container = document.createElement("div");
-    let html = `<h3>Fatura</h3>`;
-    html += `<p>Cliente: ${fatura.cliente_nome}<br>Email: ${fatura.cliente_email}</p>`;
-    html += `<table border="1" style="border-collapse:collapse; width:100%">
-      <tr><th>Produto</th><th>Preço unit.</th><th>Qtd</th><th>Subtotal</th></tr>`;
-    fatura.itens_json.forEach(i=>{
-      html += `<tr><td>${i.nome}</td><td>${i.preco}</td><td>${i.quantidade}</td><td>${i.subtotal}</td></tr>`;
-    });
-    html += `<tr><th colspan="3">Total</th><th>${fatura.total} Kz</th></tr></table>`;
-    container.innerHTML = html;
-    doc.html(container,{
-      callback: function(doc){ doc.save("fatura.pdf"); },
-      x:10,y:10,width:180
-    });
-  }
-
   carregarProdutos();
-  buscarFaturas();
 });
 </script>
-
-</body>
-</html>
-
