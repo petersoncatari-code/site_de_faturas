@@ -70,38 +70,28 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmRpZGRtbHViZXpwc2hra3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4Mjc4NjcsImV4cCI6MjA4MDQwMzg2N30.-BDleSCFaEQRkmzv1_-L9gQD6ogAYFYJBfQJj-YC9yM";
   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let produtos = [
+  function carregarProdutos(filter=""){
+  const produtos = [
     {id:1, nome:"Arroz 5kg", preco:4500, stock:10},
     {id:2, nome:"Óleo 1L", preco:1200, stock:20},
     {id:3, nome:"Farinha 1kg", preco:800, stock:15},
-    {id:4, nome:"Macarrão 500g", preco:600, stock:25},
-    {id:5, nome:"Açúcar 1kg", preco:900, stock:18},
-    {id:6, nome:"Café 250g", preco:1500, stock:12},
-    {id:7, nome:"Leite 1L", preco:650, stock:30},
-    {id:8, nome:"Biscoito 200g", preco:500, stock:40}
+    {id:4, nome:"Macarrão 500g", preco:600, stock:25}
   ];
-  let carrinho = [];
+  const container = document.getElementById("produtosList");
+  container.innerHTML = "";
+  const filtrados = produtos.filter(p=>p.nome.toLowerCase().includes(filter.toLowerCase()));
+  filtrados.forEach(p=>{
+    const div=document.createElement("div");
+    div.textContent=`${p.nome} - ${p.preco} Kz - Estoque: ${p.stock}`;
+    const btn=document.createElement("button");
+    btn.textContent="Adicionar";
+    btn.className="bg-blue-500 text-white px-2 py-1 rounded";
+    btn.addEventListener("click",()=>adicionarAoCarrinho(p.id,p.nome,p.preco,p.stock));
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+}
 
-  function carregarProdutos(filter=""){
-    const container = document.getElementById("produtosList");
-    container.innerHTML = "";
-    const filtrados = produtos.filter(p => p.nome.toLowerCase().includes(filter.toLowerCase()) && p.stock>0);
-    filtrados.forEach(p=>{
-      const div = document.createElement("div");
-      const span = document.createElement("span");
-      span.textContent = `${p.nome} - ${p.preco} Kz - Estoque: ${p.stock}`;
-      const btn = document.createElement("button");
-      btn.textContent = "Adicionar";
-      btn.className = "bg-blue-500 text-white px-2 py-1 rounded";
-      btn.addEventListener("click", ()=>adicionarAoCarrinho(p.id, p.nome, p.preco, p.stock));
-      div.appendChild(span);
-      div.appendChild(btn);
-      container.appendChild(div);
-    });
-    if(filtrados.length===0){
-      container.innerHTML = "<p>Nenhum produto encontrado.</p>";
-    }
-  }
 
   document.getElementById("searchProduto").addEventListener("input", e=>{
     carregarProdutos(e.target.value);
@@ -249,3 +239,4 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 </body>
 </html>
+
